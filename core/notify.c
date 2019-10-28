@@ -20,16 +20,9 @@
 #define USR_MASK IN_ALL_EVENTS
 #define SYS_MASK (IN_ONLYDIR | IN_MASK_CREATE)
 
-
-struct event {
-	struct list_head data;
-	struct event *next;
-	u32 mask;
-};
-
 struct dir {
 	struct hlist_node entry;
-	struct event *events;
+	struct notify_event *events;
 	ustr *name;
 	int wd;
 };
@@ -40,9 +33,8 @@ static void dir_del(struct dir *dir);
 static struct dir *dir_at(ustr *dirname);
 static ustr *dir_name(int wd, ustr *new);
 
-static struct event *event_new(struct dir *dir, u32 mask);
-static void event_del(struct event *event);
-static struct event *event_at(struct dir *dir, u32 mask);
+static struct notify_event *event_new(struct dir *dir, u32 mask);
+static void event_del(struct notify_event *event);
 
 
 #define NOTIFY_HSIZE 256
@@ -110,13 +102,15 @@ int notify_get(ustr *dirname, u32 mask, struct list_head **data)
 {
 	int ret = 0;
 	struct dir *dir = dir_at(dirname);
-	struct event *event;
+	struct notify_event *event;
 	if (!dir)
 		dir = dir_new(dirname);
 	mask &= USR_MASK;
-	event = event_at(dir, mask);
-	if (!event)
-		event = event_new(dir, mask);
+	for (event=dir->events; event; event=event->next)
+		if (event->mask == mask)
+			goto match;
+	event = event_new(dir, mask);
+match:
 	*data = &event->data;
 	return ret;
 }
@@ -131,6 +125,37 @@ int notify_dtor(void (*dtor)(struct list_head *head))
 ustr *notify_dirname(int wd)
 {
 	return dir_name(wd, NULL);
+}
+
+
+struct list_head *notify_it_start(struct notify_it *it, ustr *dirname, u32 mask)
+{
+	struct dir *dir = dir_at(dirname);
+	struct notify_event *event;
+	if (!dir)
+		return NULL;
+	for (event=dir->events; event; event=event->next) {
+		if (event->mask & mask)
+			goto match;
+	}
+	return NULL;
+match:
+	it->event = event;
+	it->mask = mask;
+	return &event->data;
+}
+
+struct list_head *notify_it_next(struct notify_it *it)
+{
+	struct notify_event *event;
+	for (event=it->event->next; event; event=event->next) {
+		if (event->mask & it->mask)
+			goto match;
+	}
+	return NULL;
+match:
+	it->event = event;
+	return &event->data;
 }
 
 __notnull
@@ -156,8 +181,8 @@ static struct dir *dir_new(ustr *dirname)
 
 static void dir_del(struct dir *dir)
 {
-	struct event *cur = dir->events;
-	struct event *next;
+	struct notify_event *cur = dir->events;
+	struct notify_event *next;
 	while (cur) {
 		next = cur->next;
 		event_del(cur);
@@ -199,9 +224,9 @@ static ustr *dir_name(int wd, ustr *new)
 	return old;
 }
 
-static struct event *event_new(struct dir *dir, u32 mask)
+static struct notify_event *event_new(struct dir *dir, u32 mask)
 {
-	struct_alloc(struct event, event);
+	struct_alloc(struct notify_event, event);
 	INIT_LIST_HEAD(&event->data);
 	event->next = dir->events;
 	dir->events = event;
@@ -209,18 +234,8 @@ static struct event *event_new(struct dir *dir, u32 mask)
 	return event;
 }
 
-static void event_del(struct event *event)
+static void event_del(struct notify_event *event)
 {
 	data_dtor(&event->data);
 	xfree(event);
-}
-
-static struct event *event_at(struct dir *dir, u32 mask)
-{
-	struct event *event;
-	for (event=dir->events; event; event=event->next) {
-		if (event->mask & mask)
-			return event;
-	}
-	return NULL;
 }

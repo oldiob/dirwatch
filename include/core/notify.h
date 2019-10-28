@@ -8,6 +8,18 @@
 #include "util/list.h"
 
 
+struct notify_event {
+	struct list_head data;
+	struct notify_event *next;
+	u32 mask;
+};
+
+struct notify_it {
+	struct notify_event *event;
+	u32 mask;
+};
+
+
 /**
  * notify_init() - Create a new eventQ.
  *
@@ -76,5 +88,10 @@ extern int notify_dtor(void (*dtor)(struct list_head *head));
  */
 extern ustr* notify_dirname(int wd);
 
+
+extern struct list_head *notify_it_start(struct notify_it *it, ustr *dirname, u32 mask);
+extern struct list_head *notify_it_next(struct notify_it *it);
+
+#define notify_for_each_event(pos, it, dirname, mask) for (pos=notify_it_start(it, dirname, mask); pos; pos=notify_it_next(it))
 
 #endif
