@@ -13,12 +13,14 @@ endef
 
 # Where to find source files
 define SRC_DIR
+core
 mem
 util
 endef
 
 # YACC
 define BISON
+core/conf-parser.y
 endef
 BISON:=$(call strip-newline,$(BISON))
 GEN_BISON=$(BISON:%.y=%.c)
