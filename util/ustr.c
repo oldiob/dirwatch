@@ -7,7 +7,6 @@
 
 #include <string.h>
 
-#include "core/io.h"
 #include "mem/alloc.h"
 #include "util/ustr.h"
 
@@ -26,7 +25,7 @@ _Static_assert(USTR_HSIZE && !(USTR_HSIZE & (USTR_HSIZE - 1)), "HMAP must be a p
 static struct ustr *table[USTR_HSIZE] = {NULL};
 
 
-static usize djb2(const char *str, usize *len)
+static u64 djb2(const char *str, usize *len)
 {
 	int c;
 	const char *diff = str;
@@ -38,16 +37,24 @@ static usize djb2(const char *str, usize *len)
 	return hash;
 }
 
+static u64 djb2_n(const char *str, usize len)
+{
+	u64 hash = 5381;
+	for (usize i=0; i<len; ++i)
+		hash = ((hash << 5) + hash) ^ str[i];
+	return hash;
+}
+
 static ustr *get(const char *str, usize len, u64 real_hash)
 {
 	ustr *ret;
 	u64 hash = (real_hash & (USTR_HSIZE - 1));
 	struct ustr *e;
 	struct ustr *new_e;
-	for (e=table[hash]; NULL != e; e=e->next) {
+	for (e=table[hash]; e; e=e->next) {
 		if (e->hash != real_hash)
 			continue;
-		if (CONFIG_USTR_ENSURE && (0 != strcmp(str, e->str)))
+		if (CONFIG_USTR_ENSURE && (strncmp(str, e->str, len)))
 			continue;
 		ret = e->str;
 		goto match;
@@ -75,6 +82,6 @@ ustr *ustr_mk(const char *str)
 __return_notnull
 ustr *ustr_mkn(const char *str, usize len)
 {
-	u64 real_hash = djb2(str, NULL);
+	u64 real_hash = djb2_n(str, len);
 	return get(str, len, real_hash);
 }
