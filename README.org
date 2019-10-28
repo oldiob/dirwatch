@@ -1,0 +1,116 @@
+* dirwatch - Take control of your directories
+** Synopsis
+
+   Are you like me, i.e. a control freak when it comes to managing
+   your files in your directories?  Tired of this X11's app that keep
+   creating that 'Desktop' or any entries that start with a capitcal
+   case in your home?  With dirwatch, it's a matter of one line
+
+   #+BEGIN_EXAMPLE
+   /home/me:^[A-Z].*:CREATE:if [ -d "${DW_MATCH}" ]; then rmdir $DW_MATCH; fi
+   #+END_EXAMPLE
+
+   Want to be notify whenever a new user home has been mounted/created?
+
+   #+BEGIN_EXAMPLE
+   /home:.+:CREATE:my-notify-script $DW_MATCH
+   #+END_EXAMPLE
+
+   Want to make statistic on read and write accesses of foo, bar,
+   dotfiles and every shell scripts in your home?
+   #+BEGIN_EXAMPLE
+   /home/me:foo|bar|\.[^.].*|.+\.sh:ACCESS|MODIFY:my-statistic-script $DW_MATCH
+   #+END_EXAMPLE
+
+   Overall, dirwatch allows you to define a command to execute on
+   files matching a pattern in a directory when certain events are
+   triggered.
+
+** Copyright
+
+   SPDX-License-Identifier: GPL-2.0-or-later
+
+   Copyright (C) 2019 Olivier Dion <olivier.dion@polymtl.ca>
+
+** Description
+*** Syntax
+
+   Rules can be defined in a single file, one rule per line.  A rule
+   is defined by fields seperated by the token ':' (just like
+   /etc/passwd).  All fields are mandatory, it wouldn't make sens to
+   leave a field empty anyway.
+
+   Thus, a rule match the following syntax:
+   #+BEGIN_EXAMPLE
+   dirname:pattern:events:cmd\n
+   #+END_EXAMPLE
+   where
+
+   - *dirname* is the directory name to watch
+   - *pattern* is the extended REs to match entry in *dirname*
+   - *events* are the events that trigger the command *cmd*
+   - *cmd* is the shell command to call
+   
+**** dirname
+    
+    The directory name to watch must be an absolute path and the
+    process must have read access to it.  It most also be a directory,
+    of course.
+
+**** pattern
+
+    Any pattern that respect the extended REs of POSIX will work. See
+    regex(3).
+
+**** events
+
+    A list of events to watch the directory for.  Events are list by
+    OR them together.  Thus 'CREATE|DELETE' will match for both
+    creating and deleting events.  Events are inotify(7) events, but
+    do not contain the 'IN_' prefix.  Only events that composed the
+    'IN_ALL_EVENTS' are accepted.
+
+**** cmd
+
+    A shell command to execute.  The command is executed the same way
+    that system(3) does. However, the forked child first chdir(2)
+    itself to *dirname* and set the environment variable DW_MATCH to
+    the matching file.
+ 
+*** Prerequisites
+
+    - Linux only
+    - Read inotify(7)
+    - GCC | Clang
+      
+** Usage
+
+   Rules are only give to dirwatch via files.  You have to tell
+   dirwatch which files you want to read for rules.  Multiple rules
+   can be given in a single file.
+
+*** Command-line options
+
+    dirwatch NAME [FILE]...
+
+    where NAME is the daemon' name and FILE is a list a configuration
+    files.
+
+*** Communication
+
+    Communication can only be made via the socket /tmp/dirwatch/NAME.
+    Logging is made to the file ~/.local/share/dirwatch/NAME.
+
+    It can also be gently terminated with the SIGTERM signal.  You can
+    obtain the daemon PID with 'ps' or via the log file.
+
+    As for now, communication with socket is _not_ implemented.
+
+** Compiling
+
+   By default, value 'local.mk' are set to compile for release.
+   Follow instructions in 'local.mk' for more details.
+
+   You can simply call 'make' to compile and 'make install' to intall.
+   
+

@@ -1,0 +1,23 @@
+# Bison
+conf-parser.c
+
+# Directories
+bin
+build
+
+# GNU Global
+GPATH
+GRTAGS
+GTAGS
+
+# Locals
+.dir-locals.el
+local.mk
+
+# Object files
+*.o
+*.d
+*.a
+
+# Valgrind
+vgcore.*
