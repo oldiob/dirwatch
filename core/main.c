@@ -176,6 +176,7 @@ static void do_notify()
 	char *ptr;
 	struct inotify_event *event;
 	isize len;
+	struct notify_it it;
 read_again:
 	len = read(eventQ, buf, sizeof(buf));
 	if (len <= 0)
@@ -191,8 +192,9 @@ read_again:
 			critical("Inconstancy in cached dirname for watch descriptor %d", event->wd);
 			continue;
 		}
-		notify_get(dirname, event->mask, &head);
-		handle_notify_event(event, head, dirname);
+		notify_for_each_event(head, &it, dirname, event->mask) {
+			handle_notify_event(event, head, dirname);
+		}
 	}
 	goto read_again;
 end:
