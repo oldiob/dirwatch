@@ -1,0 +1,11 @@
+#!/bin/sh
+make all > /dev/null
+for test in ./*.out;
+do
+    if ! eval " $test" > /dev/null; then
+	echo "FAILED" $test
+    else
+	echo "PASSED" $test
+    fi
+done
+make clean > /dev/null
