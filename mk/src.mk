@@ -14,6 +14,7 @@ endef
 # Where to find source files
 define SRC_DIR
 mem
+util
 endef
 
 # YACC
